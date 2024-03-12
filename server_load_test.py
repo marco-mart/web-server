@@ -35,10 +35,10 @@ for i in range(num_sequential_requests):
         r = requests.get(address)
         assert r.status_code == 200
         print(r.text)
-        # assert "<html>" in r.text
-        # assert "</html>" in r.text
-        # assert "<body>" in r.text
-        # assert "</body>" in r.text
+        assert "<html>" in r.text
+        assert "</html>" in r.text
+        assert "<body>" in r.text
+        assert "</body>" in r.text
     except Exception as err:
         err_counter += 1
 
