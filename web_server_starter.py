@@ -8,13 +8,17 @@ Start's a web server by:
 - initializing  the request processors
 """
 
+from enum import StrEnum, IntEnum
 from queue import Queue
-from threading import Event, Thread
-import threading
-from time import sleep
+from threading import Event, Thread, active_count
 from web_server.components.connection_handler import ConnectionHandler
-from typing import List
 from logging_config.logger_tools import get_logger
+
+class ServerIpAddress(StrEnum):
+    IP_ADDRESS = '127.0.0.1'
+
+class ServerPort(IntEnum):
+    PORT = 8080
 
 # Grab logger instance.
 logger = get_logger()
@@ -36,7 +40,9 @@ def start_threads() -> None:
     """
     Start connection handler thread.
     """
-    ch = ConnectionHandler(_die, _request_queue)
+    ch = ConnectionHandler(_die, _request_queue,
+                           ServerIpAddress.IP_ADDRESS,
+                           ServerPort.PORT)
     _threads.append(ch)
     ch.start()
     logger.info('Started ConnectionHandler thread!')
@@ -54,6 +60,7 @@ def main():
     _threads = []
 
     start_threads()
+    logger.info('Active threads: %s', active_count())
 
     print("Enter 'die' to kill the server.")
     while not _die.is_set():
@@ -63,8 +70,6 @@ def main():
         if input() == 'die':
             _die.set()
             break
-        print(f'{threading.active_count()=}')
-
 
     exit_gracefully()
 
