@@ -1,17 +1,12 @@
 """
-web_server_starter.py
-Start's a web server by:
-- creating an atomic boolean that ensures the graceful
-  death of the server
-- creating a thread-safe queue that the requests are placed in.
-- initializing request processor thread
-- initializing  the request processors
+Start's web server on localhost port 8080
 """
 
 from enum import StrEnum, IntEnum
 from queue import Queue
 from threading import Event, Thread, active_count
 from web_server.components.connection_handler import ConnectionHandler
+from web_server.components.request_processor import RequestProcessor
 from logging_config.logger_tools import get_logger
 
 class ServerIpAddress(StrEnum):
@@ -36,7 +31,7 @@ def exit_gracefully() -> None:
         t.join()
     logger.info('web_server_starter thread is dead!')
 
-def start_threads() -> None:
+def start_connection_handler_thread() -> None:
     """
     Start connection handler thread.
     """
@@ -47,7 +42,17 @@ def start_threads() -> None:
     ch.start()
     logger.info('Started ConnectionHandler thread!')
 
-def main():
+def start_request_processor_threads():
+    """
+    Start request processor threads.
+    """
+    # TODO: Calculate the number of CPU cores, give each a thread.
+    rp = RequestProcessor(_die, _request_queue)
+    _threads.append(rp)
+    rp.start()
+    logger.info('Started RequestProcessor thread!')
+
+def main() -> None:
     """
     Web server entry point.
     """
@@ -59,13 +64,12 @@ def main():
     _die = Event()
     _threads = []
 
-    start_threads()
+    start_connection_handler_thread()
+    start_request_processor_threads()
     logger.info('Active threads: %s', active_count())
 
     print("Enter 'die' to kill the server.")
     while not _die.is_set():
-
-        _request_queue.put_nowait('bruh')
         
         if input() == 'die':
             _die.set()
