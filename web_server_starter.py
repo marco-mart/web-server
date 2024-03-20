@@ -8,6 +8,10 @@ from threading import Event, Thread, active_count
 from web_server.components.connection_handler import ConnectionHandler
 from web_server.components.request_processor import RequestProcessor
 from logging_config.logger_tools import get_logger
+import socket
+
+class ThreadCount(IntEnum):
+    THREAD_COUNT = 8
 
 class ServerIpAddress(StrEnum):
     IP_ADDRESS = '127.0.0.1'
@@ -27,6 +31,12 @@ def exit_gracefully() -> None:
     """
     Kill server gracefully.
     """
+
+    # Open final connection to web server to unblock the 
+    # listener inside of ConnectionHandler to be able 
+    # to check the threading.Event
+    socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((ServerIpAddress.IP_ADDRESS, ServerPort.PORT))
+
     for t in _threads:
         t.join()
     logger.info('web_server_starter thread is dead!')
@@ -45,12 +55,16 @@ def start_connection_handler_thread() -> None:
 def start_request_processor_threads():
     """
     Start request processor threads.
+    Python uses ONE core per process.
+    Therefore, there may be many threads in one 
+    process, but they only run one at a time, 
+    not in parallel.
     """
-    # TODO: Calculate the number of CPU cores, give each a thread.
-    rp = RequestProcessor(_die, _request_queue)
-    _threads.append(rp)
-    rp.start()
-    logger.info('Started RequestProcessor thread!')
+    
+    for i in range(ThreadCount.THREAD_COUNT):
+        rp = RequestProcessor(_die, _request_queue, (i + 1))
+        _threads.append(rp)
+        rp.start()
 
 def main() -> None:
     """

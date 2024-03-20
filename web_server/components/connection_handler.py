@@ -28,36 +28,35 @@ class ConnectionHandler(Thread):
         Init.
         """
         Thread.__init__(self)
-        # Thread.__init__(self)
         self._die = die
         self._request_queue = queue
         self._ip_address = ip_address
         self._port_number = port_number
-        logger.info('Initialized ConnectionHandler!')
     
     def exit_gracefully(self) -> None:
         """
         Not to sure what to put in here.
         """
+        self.sock.close()
         logger.info('ConnectionHandler died gracefully!')
 
     def run(self) -> None:
         """
         Grab connections and place them in the queue for processing.
         """
-        logger.debug('Inside run method.')
+        logger.debug('ConnectionHandler is running!')
 
         # 'with' keyword closes the connection as soon as it's done.
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # Allow socket to be reused for different connections.
-        # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((self._ip_address, self._port_number))
-        sock.listen()
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        self.sock.bind((self._ip_address, self._port_number))
+        self.sock.listen()
 
         logger.info('Finished binding to port 8080. Listening...')
 
         while not self._die.is_set():
-            conn, addr = sock.accept()
+            conn, addr = self.sock.accept()
             logger.info('Accepted connection from: %s\n', addr)
             self._request_queue.put_nowait((conn, addr))
 

@@ -5,6 +5,7 @@ from time import sleep
 from logging_config.logger_tools import get_logger
 from typing import Tuple
 from enum import StrEnum
+from os import path
 
 logger = get_logger()
 
@@ -24,20 +25,18 @@ class RequestProcessor(Thread):
     retrieve from the request queue for the it's 
     entire lifespan until death.
     """
-    
-    _request_queue: Queue        = None
-    _die: Event                  = None
-    _connection: socket.socket   = None
-    _ip_address: str             = None
 
-
-    def __init__(self, die: Event, request_queue: Queue[Tuple[socket.socket, Tuple[str, int]]]) -> None:
+    def __init__(self, die: Event, 
+                 request_queue: Queue[Tuple[socket.socket, Tuple[str, int]]],
+                 id: int) -> None:
         Thread.__init__(self)
         self._request_queue = request_queue
-        self._die = die        
+        self._die = die
+        self._id = id
     
     def run(self) -> None:
 
+        logger.info("RequestProcessor #%d is running!" % self._id)
         while not self._die.is_set():
             
             try:
@@ -67,7 +66,7 @@ class RequestProcessor(Thread):
         _req_header_lines = _req_headers.split('\r\n')
 
         if len(_req_header_lines) < 2:
-            logger.error('HTTP request is malformed! From ip: %s', self._ip_address)
+            logger.error('HTTP request is malformed! From ip: %s' % self._ip_address)
             return
         
 
@@ -92,30 +91,54 @@ class RequestProcessor(Thread):
             pass
         elif _http_method == HttpMethods.DELETE:
             pass
+        
+        self._connection.close()
 
     def process_get_request(self, uri: str, req_headers: list[str], _req_body: str):
         """
         Process HTTP GET requests.
         """
-        # Prepare the HTTP response
-        http_response = (
-            'HTTP/1.1 200 OK\r\n'
-            'Date: Mon, 27 Jul 2009 12:28:53 GMT\r\n'
-            'Server: Apache/2.2.14 (Win32)\r\n'
-            'Last-Modified: Wed, 22 Jul 2009 19:15:56 GMT\r\n'
-            'Content-Type: text/html\r\n'
-            '\r\n'
-            '<!DOCTYPE html><html><body><h1>Hello, World!</h1></body></html>'
-        )
-        # Calculate the correct content length
-        content_length = len(http_response.encode('utf-8'))
-        # Add the content length to the headers
-        http_response = http_response.replace('Content-Type: text/html\r\n', f'Content-Length: {content_length}\r\nContent-Type: text/html\r\n')
-        
-        # Send the response
-        self._connection.sendall(http_response.encode('utf-8'))
-        self._connection.close()
+        _http_response = ""
+        if uri == '/':
+            # Prepare the HTTP response
+            http_response = (
+                'HTTP/1.1 200 OK\r\n'
+                'Date: Mon, 27 Jul 2009 12:28:53 GMT\r\n'
+                'Server: Apache/2.2.14 (Win32)\r\n'
+                'Last-Modified: Wed, 22 Jul 2009 19:15:56 GMT\r\n'
+                'Content-Type: text/html\r\n'
+                '\r\n'
+                '<!DOCTYPE html><html><body><h1>Hello, World!</h1></body></html>'
+            )
 
+            # Add the content length to the headers
+            http_response = http_response.replace('Content-Type: text/html\r\n', f'Content-Length: {len('<!DOCTYPE html><html><body><h1>Hello, World!</h1></body></html>')}\r\n')
+            _http_response = http_response
+            # Send the response
+            self._connection.sendall(_http_response.encode('utf-8'))
+        
+        if uri == '/catjam':
+            with open('catjam-cat.gif', 'rb') as file:
+                print('Processing catjam')
+                content_length = path.getsize('catjam-cat.gif')
+                http_response = (
+                    'HTTP/1.0 200 Ok\r\n'
+                    'Date: Mon, 27 Jul 2009 12:28:53 GMT\r\n'
+                    'Server: Apache/2.2.14 (Win32)\r\n'
+                    'Last-Modified: Wed, 22 Jul 2009 19:15:56 GMT\r\n'
+                    'Content-Type: image/png\r\n'
+                    f'Content-Length: {content_length}\r\n'
+                    '\r\n'
+                )
+                self._connection.send(_http_response.encode('utf-8'))
+                data = file.read() 
+                while data: 
+                    self._connection.sendall(data) 
+                    data = file.read() 
+                
+                
+
+        
     def process_post_request():
         pass
 
