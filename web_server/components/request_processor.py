@@ -118,19 +118,22 @@ class RequestProcessor(Thread):
             self._connection.sendall(_http_response.encode('utf-8'))
         
         if uri == '/catjam':
+            logger.debug('Inside catjam endpoint')
             with open('catjam-cat.gif', 'rb') as file:
                 print('Processing catjam')
                 content_length = path.getsize('catjam-cat.gif')
+                logger.debug(f"Catjam length: {content_length=}")
                 http_response = (
-                    'HTTP/1.0 200 Ok\r\n'
+                    'HTTP/1.1 200 Ok\r\n'
                     'Date: Mon, 27 Jul 2009 12:28:53 GMT\r\n'
-                    'Server: Apache/2.2.14 (Win32)\r\n'
+                    "Server: Marco's Web Server\r\n"
                     'Last-Modified: Wed, 22 Jul 2009 19:15:56 GMT\r\n'
-                    'Content-Type: image/png\r\n'
+                    'Content-Type: image/gif\r\n'
                     f'Content-Length: {content_length}\r\n'
                     '\r\n'
                 )
-                self._connection.send(_http_response.encode('utf-8'))
+                logger.debug(f"{http_response=}")
+                self._connection.send(http_response.encode('utf-8'))
                 data = file.read() 
                 while data: 
                     self._connection.sendall(data) 
